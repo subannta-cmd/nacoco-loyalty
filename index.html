@@ -54,7 +54,12 @@
     // 1. ระบบทำงานทันทีเมื่อเปิดหน้าเว็บ
     window.addEventListener('load', function() {
         createStampGrid();
-        
+        // ดึงเบอร์จาก URL (เช่น ?p=0812345678)
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlPhone = urlParams.get('p');
+        if (urlPhone) {
+            localStorage.setItem('coco_phone', urlPhone); // บันทึกทับทันที
+        }
         // ดึงค่าเบอร์ที่เคยจำไว้
         const savedPhone = localStorage.getItem('coco_phone');
         console.log("Saved Phone found:", savedPhone); // เช็คใน console
