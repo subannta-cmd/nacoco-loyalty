@@ -49,42 +49,48 @@
     </div>
 
 <script>
-    // *** สำคัญ: วางลิงก์ Web App URL จาก Google Apps Script ของคุณที่นี่ ***
     const scriptURL = 'https://script.google.com/macros/s/AKfycbz3T06_nZYsHwurD0WlexhM_cvIuDmuhdQ6yKHpT4dEId2bkUpV7Vh2BswJ9Tfxdt3c/exec';
 
-    // 1. ระบบทำงานอัตโนมัติเมื่อเปิดหน้าเว็บ
-    window.onload = function() {
-        createStampGrid(); // สร้างช่องวงกลมรอไว้
+    // 1. ระบบทำงานทันทีเมื่อเปิดหน้าเว็บ
+    window.addEventListener('load', function() {
+        createStampGrid();
+        
+        // ดึงค่าเบอร์ที่เคยจำไว้
         const savedPhone = localStorage.getItem('coco_phone');
-        if (savedPhone) {
-            document.getElementById('phone-input').value = savedPhone;
-            searchCustomer(); // ถ้าเคยกรอกแล้ว ให้โหลดแต้มทันที
-        }
-    };
+        console.log("Saved Phone found:", savedPhone); // เช็คใน console
 
-    // ฟังก์ชันสร้างช่องวงกลม 10 ช่อง
+        if (savedPhone && savedPhone !== "") {
+            const input = document.getElementById('phone-input');
+            input.value = savedPhone;
+            // หน่วงเวลา 0.5 วินาทีเพื่อให้มั่นใจว่าระบบพร้อม แล้วค่อยค้นหาอัตโนมัติ
+            setTimeout(() => {
+                searchCustomer();
+            }, 500);
+        }
+    });
+
+    // 2. ฟังก์ชันบันทึกเบอร์แบบ "พิมพ์ปุ๊บ จำปั๊บ" (กันเหนียว)
+    document.getElementById('phone-input').addEventListener('input', function(e) {
+        localStorage.setItem('coco_phone', e.target.value);
+    });
+
     function createStampGrid() {
         const grid = document.getElementById('stamp-grid');
         grid.innerHTML = '';
         for (let i = 1; i <= 10; i++) {
-            grid.innerHTML += `
-                <div class="w-12 h-12 rounded-full border-4 border-gray-200 flex items-center justify-center text-gray-300 font-bold stamp-node" id="stamp-${i}">
-                    ${i}
-                </div>`;
+            grid.innerHTML += `<div class="w-12 h-12 rounded-full border-4 border-gray-200 flex items-center justify-center text-gray-300 font-bold stamp-node" id="stamp-${i}">${i}</div>`;
         }
     }
 
-    // 2. ฟังก์ชันค้นหา/ตรวจสอบแต้ม
     function searchCustomer() {
         const phone = document.getElementById('phone-input').value;
-        if (!phone) {
-            alert('กรุณากรอกเบอร์โทรศัพท์');
-            return;
-        }
+        if (!phone) return;
         
-        document.getElementById('btn-search').innerText = 'กำลังโหลด...';
-        localStorage.setItem('coco_phone', phone); // จำเบอร์ลงเครื่องลูกค้า
+        // บันทึกซ้ำอีกรอบเพื่อความชัวร์
+        localStorage.setItem('coco_phone', phone);
 
+        document.getElementById('btn-search').innerText = 'กำลังโหลด...';
+        
         fetch(`${scriptURL}?phone=${phone}&action=search`)
             .then(res => res.text())
             .then(pts => {
@@ -94,47 +100,39 @@
                 updateDisplay(parseInt(pts));
             })
             .catch(err => {
-                alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+                console.error(err);
                 document.getElementById('btn-search').innerText = 'ตรวจสอบแต้ม';
             });
     }
 
-    // 3. ฟังก์ชันเพิ่มแต้ม หรือ แลกรางวัล
     function updatePoint(action) {
         const phone = document.getElementById('phone-input').value;
         if (!phone) return;
-
-        const confirmMsg = action === 'add' ? 'เพิ่ม 1 แต้มใช่หรือไม่?' : 'ยืนยันการใช้สิทธิ์แลกแก้วฟรี?';
-        if (!confirm(confirmMsg)) return;
+        if (!confirm(action === 'add' ? 'เพิ่ม 1 แต้ม?' : 'แลกแก้วฟรี?')) return;
 
         const btnId = action === 'add' ? 'btn-add' : 'btn-redeem';
-        const originalText = document.getElementById(btnId).innerText;
         document.getElementById(btnId).innerText = 'กำลังบันทึก...';
 
         fetch(`${scriptURL}?phone=${phone}&action=${action}`)
             .then(res => res.text())
             .then(pts => {
-                document.getElementById(btnId).innerText = originalText;
+                document.getElementById(btnId).innerText = action === 'add' ? 'เพิ่ม 1 แต้ม' : '✨ แลกแก้วฟรี!';
                 updateDisplay(parseInt(pts));
             });
     }
 
-    // 4. ฟังก์ชันอัปเดตการแสดงผลแต้ม (เปลี่ยนสี/ไอคอน)
     function updateDisplay(points) {
         document.getElementById('display-points').innerText = `${points}/10`;
-        
         for (let i = 1; i <= 10; i++) {
             const stamp = document.getElementById(`stamp-${i}`);
             if (i <= points) {
                 stamp.classList.add('active-stamp');
-                stamp.innerHTML = '🥥'; // ใส่ลูกมะพร้าวเมื่อได้แต้ม
+                stamp.innerHTML = '🥥';
             } else {
                 stamp.classList.remove('active-stamp');
                 stamp.innerHTML = i;
             }
         }
-
-        // เช็คเงื่อนไขครบ 10 แต้ม
         if (points >= 10) {
             document.getElementById('btn-redeem').classList.remove('hidden');
             document.getElementById('btn-add').classList.add('hidden');
@@ -144,5 +142,3 @@
         }
     }
 </script>
-</body>
-</html>
